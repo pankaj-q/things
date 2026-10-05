@@ -18,9 +18,10 @@ app.post('/chat', async(req, res) => {
       model: "gemini-3.8-flash",
       contents: message,
     });
-    return res.status(200).json({
+    return res.status(201).json({
+       success: true,
        message: "response genreated well done",
-       "ai:":response.text
+       ai_response: response.text
     })
 })
 
