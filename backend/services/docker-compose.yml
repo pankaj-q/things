@@ -1,0 +1,45 @@
+services:
+  ApiGateway1:
+     image: nginx;
+     ports:
+      - 8080:80
+     env_file:
+      - ./.env
+     environment:
+      - SERVER_NAME= gateway1
+
+  ApiGateway2:
+     image: nginx;
+     ports:
+      - 8081:80
+     env_file:
+      - ./.env
+     environment:
+      - SERVER_NAME= gateway1
+     
+  AuthService:
+    build: ./services/AuthService
+    ports:
+      - 8001:7000
+    environment:
+      - SERVICE_NAME=1st server
+    env_file:
+      - .env
+
+  ORderService:
+    build: ./services/ORderService
+    ports:
+      - 8002:7000
+    environment:
+      - SERVICE_NAME= 2nd Server
+    env_file:
+      - .env
+
+  PorductService:
+    build: ./services/PorductService
+    ports:
+      - 8003:7000
+    environment:
+      - SERVICE_NAME=3rd Server
+    env_file:
+      - .env
