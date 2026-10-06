@@ -45,11 +45,22 @@ app.use(express.json());
 const llm = new ChatGroq({
   model: "openai/gpt-oss-120b",
   temperature: 0.7,
+  maxTokens: undefined,
+  maxRetries: 2,
 });
 
 app.get('/ai-chat', async(req, res) => {
     const {input} = req.body;
-    const response = await llm.invoke(input)
+    const response = await llm.invoke([
+        {
+            role:"system",
+            content:"you are an assistant and your name is ASTRA. dont make false and fake assumption if you dont the answer."
+        },
+        {
+            role:"human",
+            content: input,
+        }
+    ]);
     res.status(200).json({
         success: "true",
         message: "answer generate successfully",
