@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import { ChatGroq } from "@langchain/groq";
 dotenv.config();
 
 const app = express();
@@ -8,39 +9,52 @@ const PORT = process.env.PORT || 5005;
 
 app.use(express.json());
 
-const ai = new GoogleGenAI({
-  apikey: process.env.GEMINI_API_KEY,
+// const ai = new GoogleGenAI({
+//   apikey: process.env.GEMINI_API_KEY,
+// });
+
+// app.post("/chat", async (req, res) => {
+//   const { message } = req.body;
+//   const response = await ai.models.generateContent({
+//     model: "gemini-3.8-flash",
+//     systemInstruction: {
+//         parts: [
+//             {
+//                 text: "You are an assistant and you name is Astra. If you don't the answer don't give the wrong answer"
+//             }
+//         ]
+//     },
+//     contents: [
+//         {
+//             role: "user",
+//             parts: [
+//                 {
+//                     text: message,
+//                 },
+//             ],
+//         },
+//     ],
+//   });
+//   return res.status(201).json({
+//     success: true,
+//     message: "response genreated well done",
+//     ai_response: response.text,
+//   });
+// });
+
+const llm = new ChatGroq({
+  model: "openai/gpt-oss-120b",
 });
 
-app.post("/chat", async (req, res) => {
-  const { message } = req.body;
-  const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
-    systemInstruction: {
-        parts: [
-            {
-                text: "You are an assistant and you name is Astra. If you don't the answer don't give the wrong answer"
-            }
-        ]
-    },
-    contents: [
-        {
-            role: "user",
-            parts: [
-                {
-                    text: message,
-                },
-            ],
-        },
-    ],
-  });
-  return res.status(201).json({
-    success: true,
-    message: "response genreated well done",
-    ai_response: response.text,
-  });
-});
-
+app.get('/ai-chat', async(req, res) => {
+    const {input} = req.body;
+    const response = await llm.invoke(input)
+    res.status(200).json({
+        success: "true",
+        message: "answer generate successfully",
+        "ai:": response.content
+    })
+})
 // const main = async () => {
 //     const response = await ai.models.generateContent({
 //         model: "gemini-3.5-flash",
