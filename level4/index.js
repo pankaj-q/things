@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { ChatGroq } from "@langchain/groq";
+import {Annotation, StateGraph} from '@langchain/langgraph'
 dotenv.config();
 
 const app = express();
@@ -49,8 +50,14 @@ const llm = new ChatGroq({
   maxRetries: 2,
 });
 
-app.get('/ai-chat', async(req, res) => {
-    const {input} = req.body;
+
+const state =Annotation.Root({
+    prompt:Annotation,
+    aiMsg:Annotation, 
+})
+
+const callLLM = async(state)=>{
+    console.log("state:", state);
     const response = await llm.invoke([
         {
             role:"system",
@@ -58,13 +65,39 @@ app.get('/ai-chat', async(req, res) => {
         },
         {
             role:"human",
-            content: input,
+            content: state.prompt
         }
     ]);
+    return {aiMsg: response.content}
+    
+}
+
+const graph = new StateGraph(state)
+  .addNode("agent", callLLM)
+  .addEdge("__start__", "agent")
+  .addEdge("agent","__end__")
+  .compile()
+
+
+
+app.get('/ai-chat', async(req, res) => {
+    const {input} = req.body;
+    const response = new graph.invoke({prompt: input});
+    console.log(response);
+    // const response = await llm.invoke([
+    //     {
+    //         role:"system",
+    //         content:"you are an assistant and your name is ASTRA. dont make false and fake assumption if you dont the answer."
+    //     },
+    //     {
+    //         role:"human",
+    //         content: input,
+    //     }
+    // ]);
     res.status(200).json({
         success: "true",
         message: "answer generate successfully",
-        "ai:": response.content
+        "ai:": response
     })
 })
 // const main = async () => {
