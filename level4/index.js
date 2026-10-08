@@ -45,12 +45,30 @@ app.use(express.json());
 //   });
 // });
 
+
+const tool = new TavilySearch({
+  maxResults: 5,
+  topic: "general",
+  // includeAnswer: false,
+  // includeRawContent: false,
+  // includeImages: false,
+  // includeImageDescriptions: false,
+  // searchDepth: "basic",
+  // timeRange: "day",
+  // includeDomains: [],
+  // excludeDomains: [],
+});
+const tools = [tool];
+const toolNode = new ToolNode(tools);
+
+ 
 const llm = new ChatGroq({
   model: "openai/gpt-oss-120b",
   temperature: 0.7,
   maxTokens: undefined,
   maxRetries: 2,
 });
+const llmWithTools = llm.bindTools(tools);
 
 
 // const state =Annotation.Root({
@@ -58,20 +76,7 @@ const llm = new ChatGroq({
 //     aiMsg:Annotation, 
 // })
 
- const tool = new TavilySearch({
-   maxResults: 2,
-   topic: "general",
-   // includeAnswer: false,
-   // includeRawContent: false,
-   // includeImages: false,
-   // includeImageDescriptions: false,
-   // searchDepth: "basic",
-   // timeRange: "day",
-   // includeDomains: [],
-   // excludeDomains: [],
- });
-const tools = [tool]
-const toolNode = new ToolNode(tools);
+
 
 
 
@@ -82,21 +87,18 @@ const callLLM = async(state)=>{
             role:"system",
             content:"you are an assistant and your name is ASTRA. dont make false and fake assumption if you dont the answer."
         },
-        {
-            role:"human",
-            content: state.messages[0].content
-        }
+        ...state.messages
     ]);
     return {messages:[response]}
     
 }
 
 const shouldContinue = async(state) => {
-  const lastMessage = state.messages(state.messages.length-1)
-  if(lastMessage.tool_Calls.length > 0){
+  const lastMessage = state.messages[state.messages.length-1]
+  if(lastMessage.tool_calls?.length > 0){
     return "tools"
   } else {
-    return "--end--"
+    return "__end__"
   }
   }
 const graph = new StateGraph(MessagesAnnotation)
@@ -118,8 +120,11 @@ app.get('/ai-chat', async(req, res) => {
     }
     const response = await graph.invoke({
       messages: [
-      new HumanMessage(input)
-      ]
+      {
+        role: "user",
+        content:input
+      }
+    ]
    });
     console.log(response.messages);
     // const response = await llm.invoke([
