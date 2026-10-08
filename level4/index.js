@@ -2,7 +2,9 @@ import express from "express";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { ChatGroq } from "@langchain/groq";
-import {Annotation, StateGraph} from '@langchain/langgraph'
+import {Annotation, MessagesAnnotation, StateGraph} from '@langchain/langgraph'
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import {TavilySearch} from '@langchain/tavily'
 dotenv.config();
 
 const app = express();
@@ -51,10 +53,27 @@ const llm = new ChatGroq({
 });
 
 
-const state =Annotation.Root({
-    prompt:Annotation,
-    aiMsg:Annotation, 
-})
+// const state =Annotation.Root({
+//     prompt:Annotation,
+//     aiMsg:Annotation, 
+// })
+
+ const tool = new TavilySearch({
+   maxResults: 2,
+   topic: "general",
+   // includeAnswer: false,
+   // includeRawContent: false,
+   // includeImages: false,
+   // includeImageDescriptions: false,
+   // searchDepth: "basic",
+   // timeRange: "day",
+   // includeDomains: [],
+   // excludeDomains: [],
+ });
+const tools = [tool]
+const toolNode = new ToolNode(tools);
+
+
 
 const callLLM = async(state)=>{
     console.log("state:", state);
@@ -65,25 +84,44 @@ const callLLM = async(state)=>{
         },
         {
             role:"human",
-            content: state.prompt
+            content: state.messages[0].content
         }
     ]);
-    return {aiMsg: response.content}
+    return {messages:[response]}
     
 }
 
-const graph = new StateGraph(state)
+const shouldContinue = async(state) => {
+  const lastMessage = state.messages(state.messages.length-1)
+  if(lastMessage.tool_Calls.length > 0){
+    return "tools"
+  } else {
+    return "--end--"
+  }
+  }
+const graph = new StateGraph(MessagesAnnotation)
   .addNode("agent", callLLM)
+  .addNode("tools",toolNode)
   .addEdge("__start__", "agent")
-  .addEdge("agent","__end__")
+  .addEdge("tools", "agent")
+  .addConditionalEdges("agent",shouldContinue)
   .compile()
 
 
 
 app.get('/ai-chat', async(req, res) => {
     const {input} = req.body;
-    const response = new graph.invoke({prompt: input});
-    console.log(response);
+    if(!input || typeof input != "string" || !input.trim()){
+      return res.status(400).json({
+        error: "Input message is required"
+      })
+    }
+    const response = await graph.invoke({
+      messages: [
+      new HumanMessage(input)
+      ]
+   });
+    console.log(response.messages);
     // const response = await llm.invoke([
     //     {
     //         role:"system",
@@ -97,7 +135,7 @@ app.get('/ai-chat', async(req, res) => {
     res.status(200).json({
         success: "true",
         message: "answer generate successfully",
-        "ai:": response
+        "ai:": response.messages[response.messages.length-1].content
     })
 })
 // const main = async () => {
