@@ -67,8 +67,9 @@ const llm = new ChatGroq({
   temperature: 0.7,
   maxTokens: undefined,
   maxRetries: 2,
-});
-const llmWithTools = llm.bindTools(tools);
+}).bindTools(tools)
+
+
 
 
 // const state =Annotation.Root({
@@ -85,7 +86,7 @@ const callLLM = async(state)=>{
     const response = await llm.invoke([
         {
             role:"system",
-            content:"you are an assistant and your name is ASTRA. dont make false and fake assumption if you dont the answer."
+            content:"you are an assistant and your name is ASTRA. If you don't the answer then call the relavent tool."
         },
         ...state.messages
     ]);
@@ -152,7 +153,7 @@ app.get('/ai-chat', async(req, res) => {
 // }
 // main();
 
-app.get("/", (req, res) => {
+app.post("/", (req, res) => {
   return res.status(200).json({
     message: " Hello from level4 ",
   });
