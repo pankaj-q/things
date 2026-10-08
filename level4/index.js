@@ -2,9 +2,10 @@ import express from "express";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { ChatGroq } from "@langchain/groq";
-import {Annotation, MessagesAnnotation, StateGraph} from '@langchain/langgraph'
+import {Annotation, MemorySaver, MessagesAnnotation, StateGraph} from '@langchain/langgraph'
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import {TavilySearch} from '@langchain/tavily'
+//
 dotenv.config();
 
 const app = express();
@@ -58,13 +59,15 @@ const tool = new TavilySearch({
   // includeDomains: [],
   // excludeDomains: [],
 });
+
+const checkPointer = new MemorySaver();
 const tools = [tool];
 const toolNode = new ToolNode(tools);
 
  
 const llm = new ChatGroq({
   model: "openai/gpt-oss-120b",
-  temperature: 0.7,
+  temperature: 2,
   maxTokens: undefined,
   maxRetries: 2,
 }).bindTools(tools)
@@ -86,7 +89,7 @@ const callLLM = async(state)=>{
     const response = await llm.invoke([
         {
             role:"system",
-            content:"you are an assistant and your name is ASTRA. If you don't the answer then call the relavent tool."
+            content:"you are an assistant and your name is ASTRA.Use my previous conversatoin and then if requried call the relavent tool for like - current date, current weather otherwise dont use toolCalling for simple coversation like hi hello and asking something which does not requrie any tool calling,and If you don't the answer they don't make say I am not capable for that."
         },
         ...state.messages
     ]);
@@ -108,7 +111,7 @@ const graph = new StateGraph(MessagesAnnotation)
   .addEdge("__start__", "agent")
   .addEdge("tools", "agent")
   .addConditionalEdges("agent",shouldContinue)
-  .compile()
+  .compile({checkPointer:checkPointer})
 
 
 
@@ -126,7 +129,10 @@ app.get('/ai-chat', async(req, res) => {
         content:input
       }
     ]
-   });
+   },
+    {configurable:{thread_id:"user123"}}
+);
+   
     console.log(response.messages);
     // const response = await llm.invoke([
     //     {
