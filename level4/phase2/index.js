@@ -1,6 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import { ChatGroq } from '@langchain/groq';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 dotenv.config();
 import { PDFParse } from 'pdf-parse';
 import fs from 'fs'
@@ -45,16 +46,28 @@ const uploadPDF=async() => {
     const docs = await splitter.createDocuments([text]);
     await vectorStore.addDocuments(docs);
 }
-uploadPDF();
+
 
 app.get('/chat', async(req,res) => {
     const {input} = req.body;
-    const response = await llm.invoke(input);
-    res.status(200).json({
+    const docs =  await vectorStore.similaritySearch(input, 1)
+    const context = docs.map((d)=> d.pageContent).join("/n")
+    const response = await llm.invoke([
+        new SystemMessage(`You are an RAG assistant.
+        STRICT_RULE:
+        - Answer always only from  context.
+        - DO not use exeternal Knowledge.
+        - If anwere not found, say: I don't know about the uploaded pdf.
+        
+        context: ${context}`),
+
+        new HumanMessage(input)
+    ])
+     res.status(200).json({
         success: true,
         Message:"Answer geneate successfully",
         content: response.content 
-    })
+   });
 })
 
 app.listen(PORT, () => {
