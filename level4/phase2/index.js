@@ -72,4 +72,4 @@ app.get('/chat', async(req,res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is runnning on port ${PORT}`)
-})
+}) 
