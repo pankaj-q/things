@@ -4,8 +4,10 @@ import { ChatGroq } from '@langchain/groq';
 dotenv.config();
 import { PDFParse } from 'pdf-parse';
 import fs from 'fs'
- import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-
+import { RecursiveCharacterTextSplitter, SupportedTextSplitterLanguages } from "@langchain/textsplitters";
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { TaskType } from "@google/generative-ai";
+import {QdrantVectorStore} from '@langchain/qdrant'
 const app = express();
 const PORT = process.env.PORT || 7000
 
@@ -16,6 +18,18 @@ const llm = new ChatGroq({
   temperature: 2,
   maxTokens: undefined,
   maxRetries: 2,
+})
+
+
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  model: "gemini-embedding-001", // 768 dimensions
+  taskType: TaskType.RETRIEVAL_DOCUMENT,
+  title: "Document title",
+});
+
+const vectorStore  = await QdrantVectorStore.fromExistingCollection(embeddings,{
+    url:process.env.QDRANT_URL,
+    collectionName:"Pankaj-RAG"
 })
 
 const uploadPDF=async() => {
@@ -29,7 +43,7 @@ const uploadPDF=async() => {
       chunkOverlap: 200,
     });
     const docs = await splitter.createDocuments([text]);
-    console.log(docs);
+    await vectorStore.addDocuments(docs);
 }
 uploadPDF();
 
