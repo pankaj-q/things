@@ -130,7 +130,7 @@ app.get('/ai-chat', async(req, res) => {
       }
     ]
    },
-    {configurable:{thread_id:"user123"}}
+    {configurable:{thread_id:1}}
 );
    
     console.log(response.messages);
