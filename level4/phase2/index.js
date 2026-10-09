@@ -4,6 +4,7 @@ import { ChatGroq } from '@langchain/groq';
 dotenv.config();
 import { PDFParse } from 'pdf-parse';
 import fs from 'fs'
+ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const app = express();
 const PORT = process.env.PORT || 7000
@@ -23,7 +24,12 @@ const uploadPDF=async() => {
     const pdfResult= new PDFParse({data:buffer});
     const Result= await pdfResult.getText();
     const text = Result.text;
-    console.log(text);
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+    const docs = await splitter.createDocuments([text]);
+    console.log(docs);
 }
 uploadPDF();
 
